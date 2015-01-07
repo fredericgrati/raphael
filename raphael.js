@@ -4461,6 +4461,21 @@
                            function (callback) {
                                setTimeout(callback, 16);
                            },
+        _reset = function (attr) {
+            if (attr.transform && Object.keys(attr.transform).length > 2) {
+                transformAttr = attr.transform;
+                beforeLast = attr.transform[attr.transform.length -2];
+                last = attr.transform[attr.transform.length -1];
+                if (beforeLast[0] === last[0] && beforeLast[2] === last[2] && beforeLast[3] === last[3]) {
+                    sum = (beforeLast[1] + last[1]) % 360;
+                    attr.transform[attr.transform.length -2][1] = sum;
+                    attr.transform.slice([attr.transform.length -1], 1);
+                    delete attr.transform[attr.transform.length -1];
+                    attr.transform[attr.transform.length -1] = null;
+                }
+            }
+            return attr;
+        },
         animation = function () {
             var Now = +new Date,
                 l = 0;
@@ -4568,7 +4583,7 @@
                             R.is(f, "function") && f.call(el);
                         });
                     })(e.callback, that, e.anim);
-                    that.attr(to);
+                    that.attr(_reset(to));
                     animationElements.splice(l--, 1);
                     if (e.repeat > 1 && !e.next) {
                         for (key in to) if (to[has](key)) {

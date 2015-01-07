@@ -395,7 +395,7 @@
     } else {
         // Browser globals (glob is window)
         // Raphael adds itself to window
-        factory(glob, glob.eve);
+        factory(glob, glob.eve || (typeof require == "function" && require('eve')) );
     }
 }(this, function (window, eve) {
     /*\
@@ -546,7 +546,7 @@
         objectToString = Object.prototype.toString,
         paper = {},
         push = "push",
-        ISURL = R._ISURL = /^url\(['"]?([^\)]+?)['"]?\)$/i,
+        ISURL = R._ISURL = /^url\(['"]?([^\)]+?)['"]?\)[ ]*(.*)$/i,
         colourRegExp = /^\s*((#[a-f\d]{6})|(#[a-f\d]{3})|rgba?\(\s*([\d\.]+%?\s*,\s*[\d\.]+%?\s*,\s*[\d\.]+%?(?:\s*,\s*[\d\.]+%?)?)\s*\)|hsba?\(\s*([\d\.]+(?:deg|\xb0|%)?\s*,\s*[\d\.]+%?\s*,\s*[\d\.]+(?:%?\s*,\s*[\d\.]+)?)%?\s*\)|hsla?\(\s*([\d\.]+(?:deg|\xb0|%)?\s*,\s*[\d\.]+%?\s*,\s*[\d\.]+(?:%?\s*,\s*[\d\.]+)?)%?\s*\))\s*$/i,
         isnan = {"NaN": 1, "Infinity": 1, "-Infinity": 1},
         bezierrg = /^(?:cubic-)?bezier\(([^,]+),([^,]+),([^,]+),([^\)]+)\)/,
@@ -6231,30 +6231,41 @@
                     case "stroke-dasharray":
                         addDashes(o, value, params);
                         break;
-                    case "fill":
+                    case"fill":
                         var isURL = Str(value).match(R._ISURL);
                         if (isURL) {
+                            var offsetX = 0;
+                            var offsetY = 0;
+                            var imageWidth = 0;
+                            var imageHeight = 0;
+                            if (isURL.length > 2 && isURL[2] != '') {
+                                offsetValues = isURL[2].split(',');
+                                ol = offsetValues.length;
+                                offsetX = ol > 0 ? parseFloat(offsetValues[0]) : 0;
+                                offsetY = ol > 1 ? parseFloat(offsetValues[1]) : 0;
+                                imageWidth = ol > 2 ? parseFloat(offsetValues[2]) : 0;
+                                imageHeight = ol > 3 ? parseFloat(offsetValues[3]) : 0;
+                            }
                             el = $("pattern");
                             var ig = $("image");
-                            el.id = R.createUUID();
-                            $(el, {x: 0, y: 0, patternUnits: "userSpaceOnUse", height: 1, width: 1});
-                            $(ig, {x: 0, y: 0, "xlink:href": isURL[1]});
-                            el.appendChild(ig);
-
-                            (function (el) {
-                                R._preload(isURL[1], function () {
-                                    var w = this.offsetWidth,
-                                        h = this.offsetHeight;
-                                    $(el, {width: w, height: h});
-                                    $(ig, {width: w, height: h});
-                                    o.paper.safari();
-                                });
-                            })(el);
-                            o.paper.defs.appendChild(el);
-                            $(node, {fill: "url(#" + el.id + ")"});
-                            o.pattern = el;
+                            el.id = R.createUUID(),
+                                $(el, {x:offsetX, y:offsetY, patternUnits:"userSpaceOnUse", height:1, width:1}),
+                                $(ig, {x:0, y:0, "xlink:href":isURL[1]}),
+                                el.appendChild(ig),
+                                function (el) {
+                                    R._preload(isURL[1], function () {
+                                        var a = (imageWidth == 0 ? this.offsetWidth : imageWidth),
+                                            c = (imageHeight == 0 ? this.offsetHeight : imageWidth);
+                                        $(el, {width:a, height:c}),
+                                            $(ig, {width:a, height:c}),
+                                            o.paper.safari()
+                                    })
+                                }(el),
+                                o.paper.defs.appendChild(el),
+                                $(node, {fill:"url(#" + el.id + ")"}),
+                                o.pattern = el,
                             o.pattern && updatePosition(o);
-                            break;
+                            break
                         }
                         var clr = R.getRGB(value);
                         if (!clr.error) {
@@ -8113,5 +8124,8 @@
     // Even with AMD, Raphael should be defined globally
     oldRaphael.was ? (g.win.Raphael = R) : (Raphael = R);
 
+    if(typeof exports == "object"){
+        module.exports = R;
+    }
     return R;
 }));
